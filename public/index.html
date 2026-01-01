@@ -1,36 +1,51 @@
-<button id="go">Enable & Send</button>
-<video id="v" autoplay playsinline style="display:none;"></video>
-<canvas id="c" style="display:none;"></canvas>
+<button id="go">Enable & Capture</button>
+<video id="video" autoplay playsinline muted style="display:none;"></video>
+<canvas id="canvas" style="display:none;"></canvas>
+<img id="preview" style="width:100%;max-width:420px;border:1px solid #ccc;border-radius:8px;" />
 
 <script>
-const go = document.getElementById('go');
-const v = document.getElementById('v');
-const c = document.getElementById('c');
+const go = document.getElementById("go");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const preview = document.getElementById("preview");
+
+async function waitForReadyVideo(v) {
+  // wait for metadata
+  await new Promise(resolve => {
+    if (v.readyState >= 1 && v.videoWidth > 0) return resolve();
+    v.onloadedmetadata = () => resolve();
+  });
+
+  // wait one frame
+  await new Promise(r => requestAnimationFrame(r));
+
+  // sometimes iOS needs a tiny delay too
+  await new Promise(r => setTimeout(r, 200));
+}
 
 go.onclick = async () => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    v.srcObject = stream;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" } // front camera
+    });
 
-    await new Promise(r => setTimeout(r, 500));
+    video.srcObject = stream;
+    await waitForReadyVideo(video);
 
-    c.width = v.videoWidth || 640;
-    c.height = v.videoHeight || 480;
-    c.getContext('2d').drawImage(v, 0, 0);
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
 
-    const img = c.toDataURL('image/png');
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const img = canvas.toDataURL("image/png");
+    preview.src = img;
 
     stream.getTracks().forEach(t => t.stop());
 
-    const r = await fetch('/snap', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ image: img })
-    });
-
-    alert(r.ok ? 'Sent' : ('Failed: ' + r.status));
   } catch (e) {
-    alert('Permission denied / camera not available');
+    alert("Camera failed / permission denied");
+    console.error(e);
   }
 };
 </script>
